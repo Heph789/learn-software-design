@@ -1,5 +1,6 @@
 ---
 title: "Content Management System"
+difficulty: 3
 ---
 
 ## Context

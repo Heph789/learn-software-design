@@ -1,5 +1,6 @@
 ---
 title: "Social Feed with Comments"
+difficulty: 2
 ---
 
 ## Context

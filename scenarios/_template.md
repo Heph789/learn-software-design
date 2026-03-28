@@ -1,5 +1,6 @@
 ---
 title: "Your Scenario Title"
+difficulty: 1
 ---
 
 ## Context

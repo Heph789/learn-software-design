@@ -1,5 +1,6 @@
 ---
 title: "Booking & Scheduling System"
+difficulty: 1
 ---
 
 ## Context

@@ -12,15 +12,23 @@ export interface Issue {
 export interface Scenario {
   id: number;
   title: string;
+  difficulty: number;
   context: string;
   schema: string;
   issues: Issue[];
 }
 
+export const DIFFICULTY_LABELS: Record<number, string> = {
+  1: "Beginner",
+  2: "Intermediate",
+  3: "Advanced",
+};
+
 const SCENARIOS: Scenario[] = [
   {
     id: 1,
     title: "E-Commerce Orders",
+    difficulty: 1,
     context: "You're building an online store. Customers place orders containing multiple products. The team wants to show order history, calculate revenue per product, and eventually support discount codes.",
     schema: `CREATE TABLE users (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -85,6 +93,7 @@ CREATE TABLE orders (
   {
     id: 2,
     title: "SaaS Multi-Tenant Permissions",
+    difficulty: 2,
     context: "You're building a B2B SaaS app where companies (tenants) invite team members. Users can have different roles (admin, editor, viewer). The team plans to add granular per-resource permissions and audit logging soon.",
     schema: `CREATE TABLE companies (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -159,6 +168,7 @@ CREATE TABLE documents (
   {
     id: 3,
     title: "Social Feed with Comments",
+    difficulty: 2,
     context: "You're building a social platform. Users create posts, other users comment on them. The product team wants to add threaded/nested replies, reactions (like, love, laugh), and a notification system next quarter.",
     schema: `CREATE TABLE users (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -235,6 +245,7 @@ CREATE TABLE comments (
   {
     id: 4,
     title: "Booking & Scheduling System",
+    difficulty: 1,
     context: "You're building a scheduling app for a clinic. Patients book appointments with doctors. Each doctor has weekly availability. The team needs to prevent double-bookings, support appointment cancellations, and show a daily schedule view.",
     schema: `CREATE TABLE doctors (
   id INT PRIMARY KEY AUTO_INCREMENT,
@@ -310,6 +321,7 @@ CREATE TABLE appointments (
   {
     id: 5,
     title: "Content Management System",
+    difficulty: 3,
     context: "You're building a CMS for a media company. Editors create articles, assign categories and tags, and publish on a schedule. The team wants draft/review/published workflow, revision history, and multi-author support.",
     schema: `CREATE TABLE authors (
   id INT PRIMARY KEY AUTO_INCREMENT,

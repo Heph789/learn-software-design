@@ -1,5 +1,6 @@
 ---
 title: "E-Commerce Orders"
+difficulty: 1
 ---
 
 ## Context

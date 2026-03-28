@@ -32,6 +32,11 @@ function parseScenarioFile(filepath) {
 
   if (!data.title) throw new Error(`${filename}: missing 'title' in frontmatter`);
 
+  const difficulty = parseInt(data.difficulty, 10);
+  if (isNaN(difficulty) || difficulty < 1 || difficulty > 3) {
+    throw new Error(`${filename}: 'difficulty' must be 1, 2, or 3 (got "${data.difficulty}")`);
+  }
+
   // Split on ## headings
   const sections = {};
   let currentSection = null;
@@ -94,7 +99,7 @@ function parseScenarioFile(filepath) {
     };
   });
 
-  return { id, title: data.title, context, schema, issues };
+  return { id, title: data.title, difficulty, context, schema, issues };
 }
 
 function escapeForTemplate(str) {
@@ -120,10 +125,17 @@ export interface Issue {
 export interface Scenario {
   id: number;
   title: string;
+  difficulty: number;
   context: string;
   schema: string;
   issues: Issue[];
 }
+
+export const DIFFICULTY_LABELS: Record<number, string> = {
+  1: "Beginner",
+  2: "Intermediate",
+  3: "Advanced",
+};
 
 const SCENARIOS: Scenario[] = [\n`;
 
@@ -131,6 +143,7 @@ const SCENARIOS: Scenario[] = [\n`;
     out += `  {\n`;
     out += `    id: ${s.id},\n`;
     out += `    title: "${escapeForDoubleQuote(s.title)}",\n`;
+    out += `    difficulty: ${s.difficulty},\n`;
     out += `    context: "${escapeForDoubleQuote(s.context)}",\n`;
     out += `    schema: \`${escapeForTemplate(s.schema)}\`,\n`;
     out += `    issues: [\n`;

@@ -1,5 +1,6 @@
 ---
 title: "SaaS Multi-Tenant Permissions"
+difficulty: 2
 ---
 
 ## Context
