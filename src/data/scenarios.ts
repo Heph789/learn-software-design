@@ -10,7 +10,7 @@ export interface Issue {
 }
 
 export interface Scenario {
-  id: number;
+  id: string;
   title: string;
   difficulty: number;
   context: string;
@@ -26,224 +26,7 @@ export const DIFFICULTY_LABELS: Record<number, string> = {
 
 const SCENARIOS: Scenario[] = [
   {
-    id: 1,
-    title: "E-Commerce Orders",
-    difficulty: 1,
-    context: "You're building an online store. Customers place orders containing multiple products. The team wants to show order history, calculate revenue per product, and eventually support discount codes.",
-    schema: `CREATE TABLE users (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(100),
-  email VARCHAR(255),
-  address TEXT
-);
-
-CREATE TABLE orders (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT,
-  products TEXT,        -- JSON: [{"name":"Widget","price":9.99,"qty":2}]
-  total DECIMAL(10,2),
-  status VARCHAR(20),   -- "pending","shipped","delivered","cancelled"
-  created_at DATETIME
-);`,
-    issues: [
-      {
-        category: "Normalization",
-        severity: "critical",
-        title: "Products stuffed into a JSON blob",
-        explanation: "Storing line items as a JSON string in `products` means you can't query revenue per product, enforce referential integrity, or update a product's price independently. This should be a separate `order_items` table with foreign keys to both `orders` and a `products` table.",
-        hint: "What happens when you need to answer 'what's our best-selling product this quarter'?"
-      },
-      {
-        category: "Extensibility",
-        severity: "major",
-        title: "No standalone products table",
-        explanation: "Product data is duplicated inside every order's JSON. There's no canonical source of truth for product catalog info (description, current price, inventory). A `products` table is essential for any real store.",
-        hint: "Where does the product catalog live?"
-      },
-      {
-        category: "Integrity",
-        severity: "major",
-        title: "No FOREIGN KEY constraint on user_id",
-        explanation: "Without a FK constraint, you can insert orders referencing non-existent users. The database won't protect you from orphaned records.",
-        hint: "What prevents an order from pointing to a deleted user?"
-      },
-      {
-        category: "Data Modeling",
-        severity: "moderate",
-        title: "Address stored as single TEXT field",
-        explanation: "A single `address` field can't support shipping vs. billing addresses, multiple saved addresses, or structured address validation. Users typically have multiple addresses over time, and orders need to snapshot the address at time of purchase.",
-        hint: "What happens when a user moves but you need the old shipping address for a past order?"
-      },
-      {
-        category: "Extensibility",
-        severity: "moderate",
-        title: "Status as a free-text string with no constraint",
-        explanation: "Without a CHECK constraint or enum, any typo ('Shiped', 'canelled') becomes a valid status. As the system grows, you'll also want status transition timestamps — a separate `order_status_history` table lets you track when each transition happened.",
-        hint: "How do you prevent invalid status values?"
-      },
-      {
-        category: "Performance",
-        severity: "moderate",
-        title: "No indexes beyond the primary keys",
-        explanation: "Querying orders by user_id (order history) or by status (admin dashboard) will require full table scans. These are obvious index candidates.",
-        hint: "How will the 'my orders' page perform at 10 million rows?"
-      },
-    ]
-  },
-  {
-    id: 2,
-    title: "SaaS Multi-Tenant Permissions",
-    difficulty: 2,
-    context: "You're building a B2B SaaS app where companies (tenants) invite team members. Users can have different roles (admin, editor, viewer). The team plans to add granular per-resource permissions and audit logging soon.",
-    schema: `CREATE TABLE companies (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(255),
-  plan VARCHAR(50)         -- "free","pro","enterprise"
-);
-
-CREATE TABLE users (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  company_id INT NOT NULL,
-  email VARCHAR(255) UNIQUE,
-  role VARCHAR(20) NOT NULL,  -- "admin","editor","viewer"
-  name VARCHAR(100),
-  created_at DATETIME
-);
-
-CREATE TABLE documents (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  company_id INT NOT NULL,
-  created_by INT NOT NULL,
-  title VARCHAR(255),
-  content LONGTEXT,
-  is_deleted BOOLEAN DEFAULT FALSE,
-  created_at DATETIME,
-  updated_at DATETIME
-);`,
-    issues: [
-      {
-        category: "Extensibility",
-        severity: "critical",
-        title: "Role is a single column — can't scale to granular permissions",
-        explanation: "A single `role` string on the users table means one role per user, globally. You can't express 'editor on Project A but viewer on Project B.' This needs a many-to-many relationship: a `user_roles` or `permissions` table linking users to roles on specific resources.",
-        hint: "What happens when the same user needs different access levels on different documents?"
-      },
-      {
-        category: "Multi-Tenancy",
-        severity: "critical",
-        title: "No tenant isolation on queries",
-        explanation: "There's no composite index on (company_id, id) for documents, and no enforced pattern ensuring every query filters by company_id. A bug in application code could leak documents across tenants. Consider making company_id part of composite keys or using row-level security.",
-        hint: "What prevents a query bug from showing Company A's documents to Company B?"
-      },
-      {
-        category: "Data Modeling",
-        severity: "major",
-        title: "Users locked to a single company",
-        explanation: "The `company_id` directly on the users table means a person can only belong to one company. In B2B SaaS, consultants and agency users often need access to multiple tenants. A `memberships` join table solves this.",
-        hint: "Can a freelancer who works with three of your clients use one login?"
-      },
-      {
-        category: "Soft Delete",
-        severity: "moderate",
-        title: "Soft delete without supporting infrastructure",
-        explanation: "The `is_deleted` flag on documents means every query must remember to add `WHERE is_deleted = FALSE`. Without a partial index on non-deleted rows, you're also scanning dead rows constantly. There's also no `deleted_at` timestamp for auditing or retention policies.",
-        hint: "How many of your queries will forget to filter out deleted documents?"
-      },
-      {
-        category: "Audit",
-        severity: "moderate",
-        title: "No audit trail for changes",
-        explanation: "With plans for audit logging, the schema has no `updated_by` on documents and no event/history table. You'll need to retrofit this later, which usually means backfilling incomplete data. Design the audit table now even if you populate it later.",
-        hint: "The roadmap says 'audit logging soon' — what's missing to support that?"
-      },
-      {
-        category: "Integrity",
-        severity: "moderate",
-        title: "No UNIQUE constraint on (company_id, email) for invitations",
-        explanation: "The email is globally unique, but there's no protection against a user being associated with the wrong company. If you move to a memberships model, you'll need a unique constraint on (user_id, company_id) to prevent duplicate memberships.",
-        hint: "What constraints protect the relationship between users and companies?"
-      },
-    ]
-  },
-  {
-    id: 3,
-    title: "Social Feed with Comments",
-    difficulty: 2,
-    context: "You're building a social platform. Users create posts, other users comment on them. The product team wants to add threaded/nested replies, reactions (like, love, laugh), and a notification system next quarter.",
-    schema: `CREATE TABLE users (
-  id BIGINT AUTO_INCREMENT PRIMARY KEY,
-  username VARCHAR(50) UNIQUE,
-  display_name VARCHAR(100),
-  bio TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE posts (
-  id BIGINT AUTO_INCREMENT PRIMARY KEY,
-  user_id BIGINT NOT NULL,
-  body TEXT,
-  likes_count INT DEFAULT 0,
-  comments_count INT DEFAULT 0,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users(id)
-);
-
-CREATE TABLE comments (
-  id BIGINT AUTO_INCREMENT PRIMARY KEY,
-  post_id BIGINT NOT NULL,
-  user_id BIGINT NOT NULL,
-  body TEXT NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (post_id) REFERENCES posts(id),
-  FOREIGN KEY (user_id) REFERENCES users(id)
-);`,
-    issues: [
-      {
-        category: "Extensibility",
-        severity: "critical",
-        title: "No support for threaded replies",
-        explanation: "Comments have no `parent_comment_id` column. Adding nested replies later means either altering this table (and migrating data) or building a second table. A nullable self-referential FK (`parent_id BIGINT REFERENCES comments(id)`) is the standard approach for threaded comments.",
-        hint: "The roadmap says threaded replies next quarter. How would you query a reply chain right now?"
-      },
-      {
-        category: "Data Modeling",
-        severity: "critical",
-        title: "Reactions hardcoded as a counter column",
-        explanation: "`likes_count` is a denormalized counter with no backing table tracking *who* liked *what*. You can't un-like, can't prevent double-likes, and can't extend to other reaction types (love, laugh). You need a `reactions` table: (user_id, post_id, reaction_type) with a unique constraint.",
-        hint: "How do you know if the current user already liked this post? How do you add 'love' and 'laugh' reactions?"
-      },
-      {
-        category: "Consistency",
-        severity: "major",
-        title: "Denormalized counters with no sync mechanism",
-        explanation: "`likes_count` and `comments_count` on posts will drift from reality over time unless you have triggers, a transactional update pattern, or a periodic reconciliation job. These counters are fine for performance, but the schema doesn't show how they stay accurate.",
-        hint: "What happens to comments_count when a comment is deleted?"
-      },
-      {
-        category: "Extensibility",
-        severity: "major",
-        title: "No polymorphic target for notifications",
-        explanation: "The planned notification system needs to reference different entity types: 'X liked your post', 'Y replied to your comment.' Without a notifications table designed to reference polymorphic targets (post or comment), you'll end up with nullable columns or a messy workaround.",
-        hint: "How would a notifications table know whether to link to a post or a comment?"
-      },
-      {
-        category: "Performance",
-        severity: "moderate",
-        title: "Feed query will be expensive",
-        explanation: "A user's feed ('posts from people I follow') requires a follows relationship that doesn't exist here, plus an efficient way to query it. Even for a simple 'latest posts' feed, there's no index on `created_at` for chronological pagination.",
-        hint: "How does the home feed query work? What index supports 'show me recent posts'?"
-      },
-      {
-        category: "Data Modeling",
-        severity: "moderate",
-        title: "No media or attachments support",
-        explanation: "Posts only have a `body` text field. Most social platforms support images, videos, or link previews. A separate `post_media` table would allow multiple attachments per post without altering the posts table.",
-        hint: "Where do images or videos go?"
-      },
-    ]
-  },
-  {
-    id: 4,
+    id: "booking-scheduling",
     title: "Booking & Scheduling System",
     difficulty: 1,
     context: "You're building a scheduling app for a clinic. Patients book appointments with doctors. Each doctor has weekly availability. The team needs to prevent double-bookings, support appointment cancellations, and show a daily schedule view.",
@@ -319,7 +102,7 @@ CREATE TABLE appointments (
     ]
   },
   {
-    id: 5,
+    id: "content-management",
     title: "Content Management System",
     difficulty: 3,
     context: "You're building a CMS for a media company. Editors create articles, assign categories and tags, and publish on a schedule. The team wants draft/review/published workflow, revision history, and multi-author support.",
@@ -386,6 +169,223 @@ CREATE TABLE articles (
         title: "No index strategy for the public site",
         explanation: "The public-facing site needs to query published articles by category, sorted by published_at. Without indexes on (status, published_at) and (status, category), the most common pages (homepage, category pages) will be slow.",
         hint: "What indexes support 'show the 20 most recent published articles in Technology'?"
+      },
+    ]
+  },
+  {
+    id: "ecommerce-orders",
+    title: "E-Commerce Orders",
+    difficulty: 1,
+    context: "You're building an online store. Customers place orders containing multiple products. The team wants to show order history, calculate revenue per product, and eventually support discount codes.",
+    schema: `CREATE TABLE users (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100),
+  email VARCHAR(255),
+  address TEXT
+);
+
+CREATE TABLE orders (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT,
+  products TEXT,        -- JSON: [{"name":"Widget","price":9.99,"qty":2}]
+  total DECIMAL(10,2),
+  status VARCHAR(20),   -- "pending","shipped","delivered","cancelled"
+  created_at DATETIME
+);`,
+    issues: [
+      {
+        category: "Normalization",
+        severity: "critical",
+        title: "Products stuffed into a JSON blob",
+        explanation: "Storing line items as a JSON string in `products` means you can't query revenue per product, enforce referential integrity, or update a product's price independently. This should be a separate `order_items` table with foreign keys to both `orders` and a `products` table.",
+        hint: "What happens when you need to answer 'what's our best-selling product this quarter'?"
+      },
+      {
+        category: "Extensibility",
+        severity: "major",
+        title: "No standalone products table",
+        explanation: "Product data is duplicated inside every order's JSON. There's no canonical source of truth for product catalog info (description, current price, inventory). A `products` table is essential for any real store.",
+        hint: "Where does the product catalog live?"
+      },
+      {
+        category: "Integrity",
+        severity: "major",
+        title: "No FOREIGN KEY constraint on user_id",
+        explanation: "Without a FK constraint, you can insert orders referencing non-existent users. The database won't protect you from orphaned records.",
+        hint: "What prevents an order from pointing to a deleted user?"
+      },
+      {
+        category: "Data Modeling",
+        severity: "moderate",
+        title: "Address stored as single TEXT field",
+        explanation: "A single `address` field can't support shipping vs. billing addresses, multiple saved addresses, or structured address validation. Users typically have multiple addresses over time, and orders need to snapshot the address at time of purchase.",
+        hint: "What happens when a user moves but you need the old shipping address for a past order?"
+      },
+      {
+        category: "Extensibility",
+        severity: "moderate",
+        title: "Status as a free-text string with no constraint",
+        explanation: "Without a CHECK constraint or enum, any typo ('Shiped', 'canelled') becomes a valid status. As the system grows, you'll also want status transition timestamps — a separate `order_status_history` table lets you track when each transition happened.",
+        hint: "How do you prevent invalid status values?"
+      },
+      {
+        category: "Performance",
+        severity: "moderate",
+        title: "No indexes beyond the primary keys",
+        explanation: "Querying orders by user_id (order history) or by status (admin dashboard) will require full table scans. These are obvious index candidates.",
+        hint: "How will the 'my orders' page perform at 10 million rows?"
+      },
+    ]
+  },
+  {
+    id: "saas-permissions",
+    title: "SaaS Multi-Tenant Permissions",
+    difficulty: 2,
+    context: "You're building a B2B SaaS app where companies (tenants) invite team members. Users can have different roles (admin, editor, viewer). The team plans to add granular per-resource permissions and audit logging soon.",
+    schema: `CREATE TABLE companies (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255),
+  plan VARCHAR(50)         -- "free","pro","enterprise"
+);
+
+CREATE TABLE users (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  company_id INT NOT NULL,
+  email VARCHAR(255) UNIQUE,
+  role VARCHAR(20) NOT NULL,  -- "admin","editor","viewer"
+  name VARCHAR(100),
+  created_at DATETIME
+);
+
+CREATE TABLE documents (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  company_id INT NOT NULL,
+  created_by INT NOT NULL,
+  title VARCHAR(255),
+  content LONGTEXT,
+  is_deleted BOOLEAN DEFAULT FALSE,
+  created_at DATETIME,
+  updated_at DATETIME
+);`,
+    issues: [
+      {
+        category: "Extensibility",
+        severity: "critical",
+        title: "Role is a single column — can't scale to granular permissions",
+        explanation: "A single `role` string on the users table means one role per user, globally. You can't express 'editor on Project A but viewer on Project B.' This needs a many-to-many relationship: a `user_roles` or `permissions` table linking users to roles on specific resources.",
+        hint: "What happens when the same user needs different access levels on different documents?"
+      },
+      {
+        category: "Multi-Tenancy",
+        severity: "critical",
+        title: "No tenant isolation on queries",
+        explanation: "There's no composite index on (company_id, id) for documents, and no enforced pattern ensuring every query filters by company_id. A bug in application code could leak documents across tenants. Consider making company_id part of composite keys or using row-level security.",
+        hint: "What prevents a query bug from showing Company A's documents to Company B?"
+      },
+      {
+        category: "Data Modeling",
+        severity: "major",
+        title: "Users locked to a single company",
+        explanation: "The `company_id` directly on the users table means a person can only belong to one company. In B2B SaaS, consultants and agency users often need access to multiple tenants. A `memberships` join table solves this.",
+        hint: "Can a freelancer who works with three of your clients use one login?"
+      },
+      {
+        category: "Soft Delete",
+        severity: "moderate",
+        title: "Soft delete without supporting infrastructure",
+        explanation: "The `is_deleted` flag on documents means every query must remember to add `WHERE is_deleted = FALSE`. Without a partial index on non-deleted rows, you're also scanning dead rows constantly. There's also no `deleted_at` timestamp for auditing or retention policies.",
+        hint: "How many of your queries will forget to filter out deleted documents?"
+      },
+      {
+        category: "Audit",
+        severity: "moderate",
+        title: "No audit trail for changes",
+        explanation: "With plans for audit logging, the schema has no `updated_by` on documents and no event/history table. You'll need to retrofit this later, which usually means backfilling incomplete data. Design the audit table now even if you populate it later.",
+        hint: "The roadmap says 'audit logging soon' — what's missing to support that?"
+      },
+      {
+        category: "Integrity",
+        severity: "moderate",
+        title: "No UNIQUE constraint on (company_id, email) for invitations",
+        explanation: "The email is globally unique, but there's no protection against a user being associated with the wrong company. If you move to a memberships model, you'll need a unique constraint on (user_id, company_id) to prevent duplicate memberships.",
+        hint: "What constraints protect the relationship between users and companies?"
+      },
+    ]
+  },
+  {
+    id: "social-feed",
+    title: "Social Feed with Comments",
+    difficulty: 2,
+    context: "You're building a social platform. Users create posts, other users comment on them. The product team wants to add threaded/nested replies, reactions (like, love, laugh), and a notification system next quarter.",
+    schema: `CREATE TABLE users (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  username VARCHAR(50) UNIQUE,
+  display_name VARCHAR(100),
+  bio TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE posts (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT NOT NULL,
+  body TEXT,
+  likes_count INT DEFAULT 0,
+  comments_count INT DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE comments (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  post_id BIGINT NOT NULL,
+  user_id BIGINT NOT NULL,
+  body TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (post_id) REFERENCES posts(id),
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);`,
+    issues: [
+      {
+        category: "Extensibility",
+        severity: "critical",
+        title: "No support for threaded replies",
+        explanation: "Comments have no `parent_comment_id` column. Adding nested replies later means either altering this table (and migrating data) or building a second table. A nullable self-referential FK (`parent_id BIGINT REFERENCES comments(id)`) is the standard approach for threaded comments.",
+        hint: "The roadmap says threaded replies next quarter. How would you query a reply chain right now?"
+      },
+      {
+        category: "Data Modeling",
+        severity: "critical",
+        title: "Reactions hardcoded as a counter column",
+        explanation: "`likes_count` is a denormalized counter with no backing table tracking *who* liked *what*. You can't un-like, can't prevent double-likes, and can't extend to other reaction types (love, laugh). You need a `reactions` table: (user_id, post_id, reaction_type) with a unique constraint.",
+        hint: "How do you know if the current user already liked this post? How do you add 'love' and 'laugh' reactions?"
+      },
+      {
+        category: "Consistency",
+        severity: "major",
+        title: "Denormalized counters with no sync mechanism",
+        explanation: "`likes_count` and `comments_count` on posts will drift from reality over time unless you have triggers, a transactional update pattern, or a periodic reconciliation job. These counters are fine for performance, but the schema doesn't show how they stay accurate.",
+        hint: "What happens to comments_count when a comment is deleted?"
+      },
+      {
+        category: "Extensibility",
+        severity: "major",
+        title: "No polymorphic target for notifications",
+        explanation: "The planned notification system needs to reference different entity types: 'X liked your post', 'Y replied to your comment.' Without a notifications table designed to reference polymorphic targets (post or comment), you'll end up with nullable columns or a messy workaround.",
+        hint: "How would a notifications table know whether to link to a post or a comment?"
+      },
+      {
+        category: "Performance",
+        severity: "moderate",
+        title: "Feed query will be expensive",
+        explanation: "A user's feed ('posts from people I follow') requires a follows relationship that doesn't exist here, plus an efficient way to query it. Even for a simple 'latest posts' feed, there's no index on `created_at` for chronological pagination.",
+        hint: "How does the home feed query work? What index supports 'show me recent posts'?"
+      },
+      {
+        category: "Data Modeling",
+        severity: "moderate",
+        title: "No media or attachments support",
+        explanation: "Posts only have a `body` text field. Most social platforms support images, videos, or link previews. A separate `post_media` table would allow multiple attachments per post without altering the posts table.",
+        hint: "Where do images or videos go?"
       },
     ]
   },

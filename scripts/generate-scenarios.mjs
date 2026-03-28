@@ -23,9 +23,7 @@ function parseFrontmatter(content) {
 
 function parseScenarioFile(filepath) {
   const filename = filepath.split("/").pop();
-  const idMatch = filename.match(/^(\d+)/);
-  if (!idMatch) throw new Error(`${filename}: filename must start with a number`);
-  const id = parseInt(idMatch[1], 10);
+  const id = filename.replace(/\.md$/, "");
 
   const raw = readFileSync(filepath, "utf-8");
   const { data, body } = parseFrontmatter(raw);
@@ -123,7 +121,7 @@ export interface Issue {
 }
 
 export interface Scenario {
-  id: number;
+  id: string;
   title: string;
   difficulty: number;
   context: string;
@@ -141,7 +139,7 @@ const SCENARIOS: Scenario[] = [\n`;
 
   for (const s of scenarios) {
     out += `  {\n`;
-    out += `    id: ${s.id},\n`;
+    out += `    id: "${escapeForDoubleQuote(s.id)}",\n`;
     out += `    title: "${escapeForDoubleQuote(s.title)}",\n`;
     out += `    difficulty: ${s.difficulty},\n`;
     out += `    context: "${escapeForDoubleQuote(s.context)}",\n`;
@@ -166,8 +164,8 @@ const SCENARIOS: Scenario[] = [\n`;
 
 // Main
 const files = readdirSync(SCENARIOS_DIR)
-  .filter((f) => /^\d+.*\.md$/.test(f))
-  .sort((a, b) => parseInt(a) - parseInt(b))
+  .filter((f) => f.endsWith(".md") && !f.startsWith("_"))
+  .sort()
   .map((f) => join(SCENARIOS_DIR, f));
 
 if (files.length === 0) {

@@ -18,11 +18,13 @@ npm install
 
 ### 2. Create a scenario file
 
-Copy the template and give it the next available number:
+Copy the template and give it a descriptive kebab-case name:
 
 ```sh
-cp scenarios/_template.md scenarios/006-your-scenario.md
+cp scenarios/_template.md scenarios/your-scenario-name.md
 ```
+
+The filename (without `.md`) becomes the scenario's unique ID and is used in URLs, so pick something short and stable.
 
 Fill in the sections. Here's the format:
 

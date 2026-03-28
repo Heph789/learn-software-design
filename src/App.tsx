@@ -1,5 +1,6 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import SCENARIOS, { DIFFICULTY_LABELS } from "./data/scenarios";
+import type { Scenario } from "./data/scenarios";
 import SchemaBlock from "./components/SchemaBlock";
 import IssueCard from "./components/IssueCard";
 import LandingPage from "./components/LandingPage";
@@ -12,20 +13,43 @@ const DIFFICULTY_COLORS: Record<number, string> = {
   3: "#ef4444",
 };
 
+function getScenarioIdFromURL(): string | null {
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get("scenario");
+  if (id === null) return null;
+  return SCENARIOS.some(s => s.id === id) ? id : null;
+}
+
+function setURLScenario(id: string | null) {
+  const url = new URL(window.location.href);
+  if (id === null) {
+    url.searchParams.delete("scenario");
+  } else {
+    url.searchParams.set("scenario", id);
+  }
+  history.pushState(null, "", url.toString());
+}
+
 export default function App() {
-  const [currentScenario, setCurrentScenario] = useState<number | null>(null);
+  const [scenarioId, setScenarioId] = useState<string | null>(getScenarioIdFromURL);
   const [revealState, setRevealState] = useState<RevealState>({});
   const [userNotes, setUserNotes] = useState("");
   const [showNotes, setShowNotes] = useState(false);
   const [notesSubmitted, setNotesSubmitted] = useState(false);
   const [difficultyFilter, setDifficultyFilter] = useState<number | null>(null);
 
+  useEffect(() => {
+    const onPopState = () => setScenarioId(getScenarioIdFromURL());
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
   const filteredScenarios = useMemo(
     () => difficultyFilter === null ? SCENARIOS : SCENARIOS.filter(s => s.difficulty === difficultyFilter),
     [difficultyFilter]
   );
 
-  const scenario = currentScenario !== null ? SCENARIOS[currentScenario] : null;
+  const scenario: Scenario | undefined = scenarioId !== null ? SCENARIOS.find(s => s.id === scenarioId) : undefined;
   const stateKey = (issueIdx: number) => `${scenario!.id}-${issueIdx}`;
   const revealedCount = scenario ? scenario.issues.filter((_, i) => revealState[stateKey(i)] === "full").length : 0;
 
@@ -48,8 +72,9 @@ export default function App() {
     setRevealState(s => ({ ...s, ...updates }));
   }, [scenario]);
 
-  const goTo = useCallback((idx: number) => {
-    setCurrentScenario(idx);
+  const goTo = useCallback((id: string | null) => {
+    setScenarioId(id);
+    setURLScenario(id);
     setUserNotes("");
     setShowNotes(false);
     setNotesSubmitted(false);
@@ -63,13 +88,13 @@ export default function App() {
       minHeight: "100vh",
       padding: "32px 20px"
     }}>
-      {currentScenario === null || !scenario ? (
-        <LandingPage onStart={() => goTo(0)} />
+      {!scenario ? (
+        <LandingPage onStart={() => goTo(SCENARIOS[0].id)} />
       ) : (
       <div style={{ maxWidth: "720px", margin: "0 auto" }}>
         {/* Header */}
         <div style={{ marginBottom: "36px" }}>
-          <button onClick={() => setCurrentScenario(null)} style={{
+          <button onClick={() => goTo(null)} style={{
             background: "none", border: "none", color: "rgba(255,255,255,0.35)",
             fontSize: "12px", cursor: "pointer", padding: 0, marginBottom: "12px",
             textDecoration: "underline", textUnderlineOffset: "3px"
@@ -124,11 +149,10 @@ export default function App() {
         {/* Scenario nav */}
         <div style={{ display: "flex", gap: "6px", marginBottom: "28px", flexWrap: "wrap" }}>
           {filteredScenarios.map((s) => {
-            const idx = SCENARIOS.indexOf(s);
             const done = s.issues.every((_, j) => revealState[`${s.id}-${j}`] === "full");
-            const active = idx === currentScenario;
+            const active = s.id === scenarioId;
             return (
-              <button key={s.id} onClick={() => goTo(idx)} style={{
+              <button key={s.id} onClick={() => goTo(s.id)} style={{
                 padding: "7px 14px", borderRadius: "6px", fontSize: "12px", fontWeight: 600, cursor: "pointer",
                 border: active ? "1px solid rgba(255,255,255,0.25)" : "1px solid rgba(255,255,255,0.08)",
                 background: active ? "rgba(255,255,255,0.08)" : "transparent",
@@ -270,8 +294,8 @@ export default function App() {
               {scenario.issues.filter(i => i.severity === "major").length} major · {" "}
               {scenario.issues.filter(i => i.severity === "moderate").length} moderate
             </div>
-            {currentScenario < SCENARIOS.length - 1 && (
-              <button onClick={() => goTo(currentScenario + 1)} style={{
+            {SCENARIOS.findIndex(s => s.id === scenarioId) < SCENARIOS.length - 1 && (
+              <button onClick={() => { const idx = SCENARIOS.findIndex(s => s.id === scenarioId); goTo(SCENARIOS[idx + 1].id); }} style={{
                 marginTop: "14px", background: "rgba(255,255,255,0.08)",
                 border: "1px solid rgba(255,255,255,0.15)",
                 color: "rgba(255,255,255,0.7)", padding: "9px 22px", borderRadius: "6px",
