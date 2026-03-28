@@ -29,6 +29,7 @@ Fill in the sections. Here's the format:
 ```markdown
 ---
 title: "Short Nav Label"
+difficulty: 1
 ---
 
 ## Context
@@ -61,6 +62,7 @@ See `scenarios/_template.md` for a full starter file, or any existing scenario f
 
 - **Pick a real domain** -- e-commerce, healthcare, social, fintech, etc.
 - **Include product context** that hints at future requirements the schema doesn't support.
+- **Set a difficulty** -- `1` (Beginner), `2` (Intermediate), or `3` (Advanced).
 - **Aim for 4-7 issues** with a mix of severities (`critical`, `major`, `moderate`).
 - **Make the schema look plausible** -- it should be the kind of thing a junior engineer might actually write.
 - **Write hints as questions**, not statements. They should make the reviewer think, not give the answer.

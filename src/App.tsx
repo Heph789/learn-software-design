@@ -1,34 +1,52 @@
-import { useState, useCallback } from "react";
-import SCENARIOS from "./data/scenarios";
+import { useState, useCallback, useMemo } from "react";
+import SCENARIOS, { DIFFICULTY_LABELS } from "./data/scenarios";
 import SchemaBlock from "./components/SchemaBlock";
 import IssueCard from "./components/IssueCard";
+import LandingPage from "./components/LandingPage";
 
 type RevealState = Record<string, "hint" | "full">;
 
+const DIFFICULTY_COLORS: Record<number, string> = {
+  1: "#22c55e",
+  2: "#f59e0b",
+  3: "#ef4444",
+};
+
 export default function App() {
-  const [currentScenario, setCurrentScenario] = useState(0);
+  const [currentScenario, setCurrentScenario] = useState<number | null>(null);
   const [revealState, setRevealState] = useState<RevealState>({});
   const [userNotes, setUserNotes] = useState("");
   const [showNotes, setShowNotes] = useState(false);
   const [notesSubmitted, setNotesSubmitted] = useState(false);
+  const [difficultyFilter, setDifficultyFilter] = useState<number | null>(null);
 
-  const scenario = SCENARIOS[currentScenario];
-  const stateKey = (issueIdx: number) => `${scenario.id}-${issueIdx}`;
-  const revealedCount = scenario.issues.filter((_, i) => revealState[stateKey(i)] === "full").length;
+  const filteredScenarios = useMemo(
+    () => difficultyFilter === null ? SCENARIOS : SCENARIOS.filter(s => s.difficulty === difficultyFilter),
+    [difficultyFilter]
+  );
+
+  const scenario = currentScenario !== null ? SCENARIOS[currentScenario] : null;
+  const stateKey = (issueIdx: number) => `${scenario!.id}-${issueIdx}`;
+  const revealedCount = scenario ? scenario.issues.filter((_, i) => revealState[stateKey(i)] === "full").length : 0;
 
   const revealHint = useCallback((i: number) => {
-    setRevealState(s => ({ ...s, [`${scenario.id}-${i}`]: "hint" }));
-  }, [scenario.id]);
+    if (!scenario) return;
+    const id = scenario.id;
+    setRevealState(s => ({ ...s, [`${id}-${i}`]: "hint" }));
+  }, [scenario]);
 
   const revealFull = useCallback((i: number) => {
-    setRevealState(s => ({ ...s, [`${scenario.id}-${i}`]: "full" }));
-  }, [scenario.id]);
+    if (!scenario) return;
+    const id = scenario.id;
+    setRevealState(s => ({ ...s, [`${id}-${i}`]: "full" }));
+  }, [scenario]);
 
   const revealAll = useCallback(() => {
+    if (!scenario) return;
     const updates: RevealState = {};
     scenario.issues.forEach((_, i) => { updates[`${scenario.id}-${i}`] = "full"; });
     setRevealState(s => ({ ...s, ...updates }));
-  }, [scenario.id, scenario.issues]);
+  }, [scenario]);
 
   const goTo = useCallback((idx: number) => {
     setCurrentScenario(idx);
@@ -45,9 +63,19 @@ export default function App() {
       minHeight: "100vh",
       padding: "32px 20px"
     }}>
+      {currentScenario === null || !scenario ? (
+        <LandingPage onStart={() => goTo(0)} />
+      ) : (
       <div style={{ maxWidth: "720px", margin: "0 auto" }}>
         {/* Header */}
         <div style={{ marginBottom: "36px" }}>
+          <button onClick={() => setCurrentScenario(null)} style={{
+            background: "none", border: "none", color: "rgba(255,255,255,0.35)",
+            fontSize: "12px", cursor: "pointer", padding: 0, marginBottom: "12px",
+            textDecoration: "underline", textUnderlineOffset: "3px"
+          }}>
+            Back to home
+          </button>
           <div style={{
             fontSize: "10px", fontWeight: 700, textTransform: "uppercase",
             letterSpacing: "0.15em", color: "rgba(255,255,255,0.25)", marginBottom: "8px"
@@ -65,19 +93,57 @@ export default function App() {
           </p>
         </div>
 
-        {/* Scenario nav */}
-        <div style={{ display: "flex", gap: "6px", marginBottom: "28px", flexWrap: "wrap" }}>
-          {SCENARIOS.map((s, i) => {
-            const done = s.issues.every((_, j) => revealState[`${s.id}-${j}`] === "full");
+        {/* Difficulty filter */}
+        <div style={{ display: "flex", gap: "6px", marginBottom: "12px", flexWrap: "wrap" }}>
+          <button onClick={() => setDifficultyFilter(null)} style={{
+            padding: "5px 12px", borderRadius: "6px", fontSize: "11px", fontWeight: 600, cursor: "pointer",
+            border: difficultyFilter === null ? "1px solid rgba(255,255,255,0.25)" : "1px solid rgba(255,255,255,0.08)",
+            background: difficultyFilter === null ? "rgba(255,255,255,0.08)" : "transparent",
+            color: difficultyFilter === null ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.4)",
+            transition: "all 0.15s ease"
+          }}>
+            All
+          </button>
+          {Object.entries(DIFFICULTY_LABELS).map(([level, label]) => {
+            const n = parseInt(level, 10);
+            const active = difficultyFilter === n;
             return (
-              <button key={s.id} onClick={() => goTo(i)} style={{
-                padding: "7px 14px", borderRadius: "6px", fontSize: "12px", fontWeight: 600, cursor: "pointer",
-                border: i === currentScenario ? "1px solid rgba(255,255,255,0.25)" : "1px solid rgba(255,255,255,0.08)",
-                background: i === currentScenario ? "rgba(255,255,255,0.08)" : "transparent",
-                color: done ? "rgba(255,255,255,0.3)" : i === currentScenario ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.45)",
-                textDecoration: done ? "line-through" : "none",
+              <button key={n} onClick={() => setDifficultyFilter(active ? null : n)} style={{
+                padding: "5px 12px", borderRadius: "6px", fontSize: "11px", fontWeight: 600, cursor: "pointer",
+                border: active ? `1px solid ${DIFFICULTY_COLORS[n]}40` : "1px solid rgba(255,255,255,0.08)",
+                background: active ? `${DIFFICULTY_COLORS[n]}15` : "transparent",
+                color: active ? DIFFICULTY_COLORS[n] : "rgba(255,255,255,0.4)",
                 transition: "all 0.15s ease"
               }}>
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Scenario nav */}
+        <div style={{ display: "flex", gap: "6px", marginBottom: "28px", flexWrap: "wrap" }}>
+          {filteredScenarios.map((s) => {
+            const idx = SCENARIOS.indexOf(s);
+            const done = s.issues.every((_, j) => revealState[`${s.id}-${j}`] === "full");
+            const active = idx === currentScenario;
+            return (
+              <button key={s.id} onClick={() => goTo(idx)} style={{
+                padding: "7px 14px", borderRadius: "6px", fontSize: "12px", fontWeight: 600, cursor: "pointer",
+                border: active ? "1px solid rgba(255,255,255,0.25)" : "1px solid rgba(255,255,255,0.08)",
+                background: active ? "rgba(255,255,255,0.08)" : "transparent",
+                color: done ? "rgba(255,255,255,0.3)" : active ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.45)",
+                textDecoration: done ? "line-through" : "none",
+                transition: "all 0.15s ease",
+                display: "flex", alignItems: "center", gap: "6px"
+              }}>
+                <span style={{
+                  fontSize: "9px", fontWeight: 700,
+                  color: DIFFICULTY_COLORS[s.difficulty],
+                  opacity: done ? 0.4 : 0.7
+                }}>
+                  {DIFFICULTY_LABELS[s.difficulty]?.slice(0, 3).toUpperCase()}
+                </span>
                 {s.title}
               </button>
             );
@@ -217,6 +283,7 @@ export default function App() {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }
