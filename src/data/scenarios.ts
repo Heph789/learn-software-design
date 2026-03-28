@@ -1,3 +1,6 @@
+// AUTO-GENERATED from scenarios/*.md — do not edit by hand.
+// Run "npm run generate" to regenerate.
+
 export interface Issue {
   category: string;
   severity: "critical" | "major" | "moderate";
@@ -76,7 +79,7 @@ CREATE TABLE orders (
         title: "No indexes beyond the primary keys",
         explanation: "Querying orders by user_id (order history) or by status (admin dashboard) will require full table scans. These are obvious index candidates.",
         hint: "How will the 'my orders' page perform at 10 million rows?"
-      }
+      },
     ]
   },
   {
@@ -150,7 +153,7 @@ CREATE TABLE documents (
         title: "No UNIQUE constraint on (company_id, email) for invitations",
         explanation: "The email is globally unique, but there's no protection against a user being associated with the wrong company. If you move to a memberships model, you'll need a unique constraint on (user_id, company_id) to prevent duplicate memberships.",
         hint: "What constraints protect the relationship between users and companies?"
-      }
+      },
     ]
   },
   {
@@ -226,7 +229,7 @@ CREATE TABLE comments (
         title: "No media or attachments support",
         explanation: "Posts only have a `body` text field. Most social platforms support images, videos, or link previews. A separate `post_media` table would allow multiple attachments per post without altering the posts table.",
         hint: "Where do images or videos go?"
-      }
+      },
     ]
   },
   {
@@ -301,7 +304,7 @@ CREATE TABLE appointments (
         title: "No appointment type or service concept",
         explanation: "All appointments are treated identically. Clinics typically have different visit types (checkup, follow-up, procedure) with different durations and prices. A `services` table linked to appointments would support this without changing the appointments schema later.",
         hint: "Is a 15-minute follow-up the same as a 60-minute procedure?"
-      }
+      },
     ]
   },
   {
@@ -371,9 +374,9 @@ CREATE TABLE articles (
         title: "No index strategy for the public site",
         explanation: "The public-facing site needs to query published articles by category, sorted by published_at. Without indexes on (status, published_at) and (status, category), the most common pages (homepage, category pages) will be slow.",
         hint: "What indexes support 'show the 20 most recent published articles in Technology'?"
-      }
+      },
     ]
-  }
+  },
 ];
 
 export default SCENARIOS;

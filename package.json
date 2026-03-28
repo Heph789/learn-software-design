@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b",
+    "generate": "node scripts/generate-scenarios.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },
