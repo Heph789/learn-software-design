@@ -1,15 +1,20 @@
-/**
- * SQL Schema Review Scenarios
- *
- * To add a new scenario, append an object to this array with:
- *   - id: unique number
- *   - title: short name for the nav button
- *   - context: product context paragraph
- *   - schema: the SQL DDL string
- *   - issues: array of { category, severity ("critical"|"major"|"moderate"), title, explanation, hint }
- */
+export interface Issue {
+  category: string;
+  severity: "critical" | "major" | "moderate";
+  title: string;
+  explanation: string;
+  hint: string;
+}
 
-const SCENARIOS = [
+export interface Scenario {
+  id: number;
+  title: string;
+  context: string;
+  schema: string;
+  issues: Issue[];
+}
+
+const SCENARIOS: Scenario[] = [
   {
     id: 1,
     title: "E-Commerce Orders",

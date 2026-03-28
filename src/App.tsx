@@ -3,32 +3,34 @@ import SCENARIOS from "./data/scenarios";
 import SchemaBlock from "./components/SchemaBlock";
 import IssueCard from "./components/IssueCard";
 
+type RevealState = Record<string, "hint" | "full">;
+
 export default function App() {
   const [currentScenario, setCurrentScenario] = useState(0);
-  const [revealState, setRevealState] = useState({});
+  const [revealState, setRevealState] = useState<RevealState>({});
   const [userNotes, setUserNotes] = useState("");
   const [showNotes, setShowNotes] = useState(false);
   const [notesSubmitted, setNotesSubmitted] = useState(false);
 
   const scenario = SCENARIOS[currentScenario];
-  const stateKey = (issueIdx) => `${scenario.id}-${issueIdx}`;
+  const stateKey = (issueIdx: number) => `${scenario.id}-${issueIdx}`;
   const revealedCount = scenario.issues.filter((_, i) => revealState[stateKey(i)] === "full").length;
 
-  const revealHint = useCallback((i) => {
+  const revealHint = useCallback((i: number) => {
     setRevealState(s => ({ ...s, [`${scenario.id}-${i}`]: "hint" }));
   }, [scenario.id]);
 
-  const revealFull = useCallback((i) => {
+  const revealFull = useCallback((i: number) => {
     setRevealState(s => ({ ...s, [`${scenario.id}-${i}`]: "full" }));
   }, [scenario.id]);
 
   const revealAll = useCallback(() => {
-    const updates = {};
+    const updates: RevealState = {};
     scenario.issues.forEach((_, i) => { updates[`${scenario.id}-${i}`] = "full"; });
     setRevealState(s => ({ ...s, ...updates }));
   }, [scenario.id, scenario.issues]);
 
-  const goTo = useCallback((idx) => {
+  const goTo = useCallback((idx: number) => {
     setCurrentScenario(idx);
     setUserNotes("");
     setShowNotes(false);

@@ -1,6 +1,14 @@
 import { SEVERITY_CONFIG } from "./SchemaBlock";
+import type { Issue } from "../data/scenarios";
 
-export default function IssueCard({ issue, revealed, onRevealHint, onRevealFull }) {
+interface IssueCardProps {
+  issue: Issue;
+  revealed: "hidden" | "hint" | "full";
+  onRevealHint: () => void;
+  onRevealFull: () => void;
+}
+
+export default function IssueCard({ issue, revealed, onRevealHint, onRevealFull }: IssueCardProps) {
   const sev = SEVERITY_CONFIG[issue.severity];
   return (
     <div style={{
